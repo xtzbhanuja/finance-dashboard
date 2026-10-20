@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+    <meta charset="UTF-8">
+    <title>මගේ පළමු Dashboard එක - පියවර 4</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 p-8 font-sans">
+
+    <!-- ප්‍රධාන මාතෘකාව සහ Reset බොත්තම -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">📊 මූල්‍ය කළමනාකරණ Dashboard</h1>
+            <p class="text-gray-600">4 වන පියවර: දත්ත ස්ථිරව ගබඩා කිරීම (Local Storage) සහ මකා දැමීම</p>
+        </div>
+        <button onclick="resetData()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-red-100 hover:text-red-600 transition text-sm font-medium">
+            🔄 මුල සිට සකසන්න (Reset Data)
+        </button>
+    </div>
+
+    <!-- තොරතුරු පෙන්වන කාඩ්පත් 3 (Summary Cards) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-blue-500">
+            <h2 class="text-gray-500 text-sm">ජූනි මස මුළු ආදායම</h2>
+            <p id="incomeText" class="text-2xl font-bold text-gray-800 mt-2">රු. 0</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-red-500">
+            <h2 class="text-gray-500 text-sm">ජූනි මස මුළු වියදම</h2>
+            <p id="expenseText" class="text-2xl font-bold text-gray-800 mt-2">රු. 0</p>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-md border-l-4 border-green-500">
+            <h2 class="text-gray-500 text-sm">ඉතිරි මුදල (Balance)</h2>
+            <p id="balanceText" class="text-2xl font-bold text-green-600 mt-2">රු. 0</p>
+        </div>
+    </div>
+
+    <!-- දත්ත ඇතුළත් කරන Form එක -->
+    <div class="bg-white p-6 rounded-xl shadow-md mb-8">
+        <h3 class="text-lg font-bold text-gray-700 mb-4">➕ නව ගනුදෙනුවක් එක් කරන්න (Add Transaction)</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <input type="text" id="descInput" placeholder="විස්තරය (උදා: පොත් මිලදී ගැනීම)" 
+                   class="border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:border-blue-500">
+
+            <select id="typeInput" class="border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:border-blue-500 bg-white">
+                <option value="income">ආදායම් (Income)</option>
+                <option value="expense">වියදම් (Expense)</option>
+            </select>
+
+            <input type="number" id="amountInput" placeholder="මුදල (රු.)" 
+                   class="border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:border-blue-500">
+
+            <button onclick="addTransaction()" class="bg-blue-600 text-white font-medium rounded-lg p-2.5 hover:bg-blue-700 transition shadow">
+                + එකතු කරන්න
+            </button>
+        </div>
+    </div>
+
+    <!-- ප්‍රස්ථාරය සහ වගුව තබන කොටස -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- වම් පැත්ත: ප්‍රස්ථාරය -->
+        <div class="bg-white p-6 rounded-xl shadow-md">
+            <h3 class="text-lg font-bold text-gray-700 mb-4">📈 මාසික ආදායම් සහ වියදම් ප්‍රස්ථාරය</h3>
+            <canvas id="financeChart"></canvas>
+        </div>
+
+        <!-- දකුණු පැත්ත: මෑතකාලීන ගනුදෙනු වගුව -->
+        <div class="bg-white p-6 rounded-xl shadow-md">
+            <h3 class="text-lg font-bold text-gray-700 mb-4">📋 ගනුදෙනු ලැයිස්තුව (Transactions)</h3>
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b text-gray-500 text-sm">
+                        <th class="py-3">විස්තරය</th>
+                        <th class="py-3">වර්ගය</th>
+                        <th class="py-3 text-right">මුදල</th>
+                        <th class="py-3 text-center">ක්‍රියාව</th>
+                    </tr>
+                </thead>
+                <tbody id="transactionTable" class="text-gray-700 text-sm divide-y">
+                    <!-- JavaScript මගින් මෙතැනට දත්ත පේළි ස්වයංක්‍රීයව එකතු කරයි -->
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <!-- JavaScript: Local Storage සහ සම්පූර්ණ ක්‍රියාකාරීත්වය -->
+    <script>
+        // 1. ආරම්භක දත්ත (පළමු වතාවට පමණක් පෙන්වීමට)
+        const defaultTransactions = [
+            { id: 1, desc: "මාසික වැටුප", type: "income", amount: 45000 },
+            { id: 2, desc: "විදුලි සහ අන්තර්ජාල බිල්පත්", type: "expense", amount: 5000 },
+            { id: 3, desc: "ආහාර සහ වෙනත් වියදම්", type: "expense", amount: 10000 }
+        ];
+
+        // 2. Local Storage එකෙන් කලින් Save කළ දත්ත ලබා ගැනීම (නැතිනම් ආරම්භක දත්ත ගැනීම)
+        let transactions = JSON.parse(localStorage.getItem('myDashboardData')) || defaultTransactions;
+
+        // 3. ප්‍රස්ථාරය නිර්මාණය කිරීම
+        const ctx = document.getElementById('financeChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['ජනවාරි', 'පෙබරවාරි', 'මාර්තු', 'අප්‍රේල්', 'මැයි', 'ජූනි (දැන්)'],
+                datasets: [
+                    {
+                        label: 'ආදායම (රු.)',
+                        data: [30000, 35000, 32000, 40000, 42000, 0],
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'වියදම (රු.)',
+                        data: [12000, 15000, 10000, 18000, 14000, 0],
+                        backgroundColor: '#ef4444',
+                        borderRadius: 6
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // 4. Dashboard එකේ කාඩ්පත්, වගුව සහ ප්‍රස්ථාරය යාවත්කාලීන කරන ප්‍රධාන Function එක
+        function updateDashboard() {
+            let totalIncome = 0;
+            let totalExpense = 0;
+            const tableBody = document.getElementById("transactionTable");
+            tableBody.innerHTML = ""; // වගුව මුලින් හිස් කර නැවත ඇඳීම
+
+            // සෑම ගනුදෙනුවක්ම එකින් එක පරීක්ෂා කර එකතුව ගැනීම සහ වගුවට දැමීම
+            transactions.forEach((item) => {
+                if (item.type === "income") {
+                    totalIncome += item.amount;
+                } else {
+                    totalExpense += item.amount;
+                }
+
+                const badgeHtml = item.type === "income" 
+                    ? `<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">ආදායම්</span>`
+                    : `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs">වියදම්</span>`;
+                
+                const amountColor = item.type === "income" ? "text-blue-600" : "text-red-600";
+
+                const row = `
+                    <tr>
+                        <td class="py-3 font-medium">${item.desc}</td>
+                        <td class="py-3">${badgeHtml}</td>
+                        <td class="py-3 text-right font-bold ${amountColor}">රු. ${item.amount.toLocaleString()}</td>
+                        <td class="py-3 text-center">
+                            <button onclick="deleteTransaction(${item.id})" class="text-gray-400 hover:text-red-600 transition" title="මකා දමන්න">
+                                🗑️
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.insertAdjacentHTML('afterbegin', row);
+            });
+
+            const balance = totalIncome - totalExpense;
+
+            // කාඩ්පත්වල අගයන් යාවත්කාලීන කිරීම
+            document.getElementById("incomeText").innerText = "රු. " + totalIncome.toLocaleString();
+            document.getElementById("expenseText").innerText = "රු. " + totalExpense.toLocaleString();
+            document.getElementById("balanceText").innerText = "රු. " + balance.toLocaleString();
+
+            // ප්‍රස්ථාරයේ ජූනි මාසයේ තීරු යාවත්කාලීන කිරීම
+            myChart.data.datasets[0].data[5] = totalIncome;
+            myChart.data.datasets[1].data[5] = totalExpense;
+            myChart.update();
+
+            // 🌟 වැදගත්ම කොටස: නවතම දත්ත ලැයිස්තුව Local Storage එකේ Save කිරීම
+            localStorage.setItem('myDashboardData', JSON.stringify(transactions));
+        }
+
+        // 5. අලුත් ගනුදෙනුවක් එකතු කිරීම
+        function addTransaction() {
+            const desc = document.getElementById("descInput").value.trim();
+            const type = document.getElementById("typeInput").value;
+            const amount = Number(document.getElementById("amountInput").value);
+
+            if (desc === "" || amount <= 0) {
+                alert("කරුණාකර නිවැරදි විස්තරයක් සහ මුදලක් ඇතුළත් කරන්න!");
+                return;
+            }
+
+            // අලුත් ගනුදෙනුව ලැයිස්තුවට එකතු කිරීම
+            const newEntry = {
+                id: Date.now(), // එක් එක් ගනුදෙනුවට අනන්‍ය අංකයක් (Unique ID) ලබා දීම
+                desc: desc,
+                type: type,
+                amount: amount
+            };
+
+            transactions.push(newEntry);
+            updateDashboard(); // Dashboard එක යාවත්කාලීන කර Save කිරීම
+
+            // කොටු හිස් කිරීම
+            document.getElementById("descInput").value = "";
+            document.getElementById("amountInput").value = "";
+        }
+
+        // 6. ගනුදෙනුවක් මකා දැමීම (Delete)
+        function deleteTransaction(id) {
+            transactions = transactions.filter(item => item.id !== id);
+            updateDashboard();
+        }
+
+        // 7. සියලු දත්ත මුල් තත්ත්වයට පත් කිරීම (Reset)
+        function resetData() {
+            if (confirm("ඔබ ඇතුළත් කළ සියලුම නව දත්ත මකා මුල් තත්ත්වයට පත් කිරීමට අවශ්‍යද?")) {
+                localStorage.removeItem('myDashboardData');
+                transactions = [...defaultTransactions];
+                updateDashboard();
+            }
+        }
+
+        // පිටුව විවෘත වන විටම පළමු වරට Dashboard එක ක්‍රියාත්මක කරවීම
+        updateDashboard();
+    </script>
+
+</body>
+</html>
